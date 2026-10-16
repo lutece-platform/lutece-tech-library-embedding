@@ -43,10 +43,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import ai.onnxruntime.OrtException;
-import fr.paris.lutece.portal.service.util.AppLogService;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -67,6 +68,8 @@ public class EmbeddingService
     private static final String CGROUP_V1_LIMIT = "/sys/fs/cgroup/memory/memory.limit_in_bytes";
     private static final String UNKNOWN = "unknown";
     private static final long MEBIBYTE = 1024L * 1024L;
+    private static final String PROBE_TEXT = "embedding probe";
+    private static final Logger LOGGER = LogManager.getLogger( "lutece.embedding" );
 
     private String _strModelName;
     private Optional<String> _strModelPath;
@@ -190,7 +193,7 @@ public class EmbeddingService
             }
             catch( OrtException e )
             {
-                AppLogService.error( "embedding- error releasing the model", e );
+                LOGGER.error( "embedding- error releasing the model", e );
             }
             _encoder = null;
         }
@@ -272,13 +275,15 @@ public class EmbeddingService
         {
             Encoder encoder = _strModelPath.filter( s -> !s.isBlank( ) ).isPresent( ) ? loadFromDirectory( Path.of( _strModelPath.get( ) ) )
                     : loadFromClasspath( );
-            AppLogService.info( "embedding- model {} loaded from {} in {} ms: {} dimensions, {} threads | {}", _descriptor.getId( ), strSource,
-                    System.currentTimeMillis( ) - lStart, _descriptor.getDimensions( ), _nThreads, describeEnvironment( ) );
+            long lLoaded = System.currentTimeMillis( );
+            encoder.encode( _descriptor.getDocumentPrefix( ) + PROBE_TEXT );
+            LOGGER.info( "embedding- model {} loaded from {} in {} ms: {} dimensions, {} threads | first encoding {} ms | {}", _descriptor.getId( ),
+                    strSource, lLoaded - lStart, _descriptor.getDimensions( ), _nThreads, System.currentTimeMillis( ) - lLoaded, describeEnvironment( ) );
             return encoder;
         }
         catch( IOException | OrtException | RuntimeException | LinkageError e )
         {
-            AppLogService.getLogger( ).error( "embedding- no model loaded from {} | {}", strSource, describeEnvironment( ), e );
+            LOGGER.error( "embedding- no model loaded from {} | {}", strSource, describeEnvironment( ), e );
             return null;
         }
     }
@@ -392,7 +397,7 @@ public class EmbeddingService
             }
             catch( IOException | RuntimeException e )
             {
-                AppLogService.debug( "embedding- no memory limit in {}", strFile );
+                LOGGER.debug( "embedding- no memory limit in {}", strFile );
             }
         }
         return UNKNOWN;

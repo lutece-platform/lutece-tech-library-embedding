@@ -45,6 +45,7 @@ if ( _embeddingService.isAvailable( ) )
 | `embedding.model.name` | `granite-r2` | model packaged on the classpath under `fr/paris/lutece/plugins/embedding/models/<name>/` |
 | `embedding.model.path` | | directory holding `model.onnx`, `tokenizer.json` and `model.properties`, used instead of the classpath |
 | `embedding.threads` | `2` | threads of one encoding |
+| `embedding.loadOnStartup` | `false` | `true` loads the model when the application starts, which logs at once whether the model runs on this server |
 
 `model.properties` gives `id`, `dimensions`, `pooling` (`CLS` or `MEAN`), `queryPrefix`, `documentPrefix` and
 `maxTokens`.
@@ -53,5 +54,5 @@ if ( _embeddingService.isAvailable( ) )
 
 - ONNX Runtime extracts its native library to `java.io.tmpdir`, which must allow execution.
 - The quantized Granite R2 model needs a CPU with AVX2.
-- At load, the log gives the model, the load time, the AVX2 support, the memory limit of the container, the heap and
-  the temporary directory.
+- At load, the `lutece.embedding` logger gives the model, the load time, the time of a first encoding, the AVX2
+  support, the memory limit of the container, the heap and the temporary directory.
