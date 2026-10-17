@@ -185,17 +185,28 @@ public class EmbeddingService
     @PreDestroy
     public synchronized void close( )
     {
-        if ( _encoder != null )
+        release( _encoder );
+        _encoder = null;
+    }
+
+    /**
+     * Releases an encoder, logging a failure.
+     *
+     * @param encoder
+     *            the encoder, null for none
+     */
+    private static void release( Encoder encoder )
+    {
+        if ( encoder != null )
         {
             try
             {
-                _encoder.close( );
+                encoder.close( );
             }
             catch( OrtException e )
             {
                 LOGGER.error( "embedding- error releasing the model", e );
             }
-            _encoder = null;
         }
     }
 
@@ -270,11 +281,12 @@ public class EmbeddingService
     private Encoder load( )
     {
         long lStart = System.currentTimeMillis( );
-        String strSource = _strModelPath.filter( s -> !s.isBlank( ) ).map( s -> "directory " + s ).orElse( "classpath " + RESOURCE_BASE + _strModelName );
+        Optional<String> strDirectory = _strModelPath.filter( s -> !s.isBlank( ) );
+        String strSource = strDirectory.map( s -> "directory " + s ).orElse( "classpath " + RESOURCE_BASE + _strModelName );
+        Encoder encoder = null;
         try
         {
-            Encoder encoder = _strModelPath.filter( s -> !s.isBlank( ) ).isPresent( ) ? loadFromDirectory( Path.of( _strModelPath.get( ) ) )
-                    : loadFromClasspath( );
+            encoder = strDirectory.isPresent( ) ? loadFromDirectory( Path.of( strDirectory.get( ) ) ) : loadFromClasspath( );
             long lLoaded = System.currentTimeMillis( );
             encoder.encode( _descriptor.getDocumentPrefix( ) + PROBE_TEXT );
             LOGGER.info( "embedding- model {} loaded from {} in {} ms: {} dimensions, {} threads | first encoding {} ms | {}", _descriptor.getId( ),
@@ -284,6 +296,7 @@ public class EmbeddingService
         catch( IOException | OrtException | RuntimeException | LinkageError e )
         {
             LOGGER.error( "embedding- no model loaded from {} | {}", strSource, describeEnvironment( ), e );
+            release( encoder );
             return null;
         }
     }
@@ -352,7 +365,7 @@ public class EmbeddingService
 
     /**
      * Describes what the environment offers to the model: the AVX2 instructions the quantized models need, the memory
-     * limit of the container, the heap and the temporary directory where the native libraries are extracted.
+     * limit of the container, the heap and the temporary directory where ONNX Runtime extracts its native library.
      *
      * @return the description
      */

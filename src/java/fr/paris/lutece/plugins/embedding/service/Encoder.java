@@ -79,14 +79,19 @@ final class Encoder implements AutoCloseable
     Encoder( Path model, Path tokenizer, ModelDescriptor descriptor, int nThreads ) throws OrtException, IOException
     {
         _env = OrtEnvironment.getEnvironment( );
+        _tokenizer = HuggingFaceTokenizer.builder( ).optTokenizerPath( tokenizer ).optMaxLength( descriptor.getMaxTokens( ) ).optTruncation( true )
+                .optPadding( false ).optAddSpecialTokens( true ).build( );
         try ( OrtSession.SessionOptions options = new OrtSession.SessionOptions( ) )
         {
             options.setIntraOpNumThreads( nThreads );
             options.setInterOpNumThreads( 1 );
             _session = _env.createSession( model.toString( ), options );
         }
-        _tokenizer = HuggingFaceTokenizer.builder( ).optTokenizerPath( tokenizer ).optMaxLength( descriptor.getMaxTokens( ) ).optTruncation( true )
-                .optPadding( false ).optAddSpecialTokens( true ).build( );
+        catch( OrtException | RuntimeException e )
+        {
+            _tokenizer.close( );
+            throw e;
+        }
         _bMeanPooling = ModelDescriptor.POOLING_MEAN.equals( descriptor.getPooling( ) );
         _bTokenTypes = _session.getInputNames( ).contains( INPUT_TOKEN_TYPES );
     }
@@ -192,7 +197,13 @@ final class Encoder implements AutoCloseable
     @Override
     public void close( ) throws OrtException
     {
-        _tokenizer.close( );
-        _session.close( );
+        try
+        {
+            _tokenizer.close( );
+        }
+        finally
+        {
+            _session.close( );
+        }
     }
 }

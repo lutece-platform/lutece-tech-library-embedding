@@ -49,6 +49,8 @@ import java.util.concurrent.Future;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvFileSource;
 
 import fr.paris.lutece.plugins.embedding.util.Vectors;
 
@@ -134,6 +136,28 @@ public class EmbeddingServiceTest
         }
         assertEquals( 1, Math.sqrt( dNorm ), 1e-4 );
         assertArrayEquals( vector, _service.embedDocument( TITLES [0] ) );
+    }
+
+    /**
+     * Checks that the vectors match those sentence-transformers computes from the same model file with the pooling
+     * the model declares, CLS; a mean pooling scores at most 0.86 against them.
+     *
+     * @param strText
+     *            the text
+     * @param strVector
+     *            the reference vector, values separated by spaces
+     */
+    @ParameterizedTest
+    @CsvFileSource( resources = "granite-r2-reference.txt", delimiter = '\t', maxCharsPerColumn = 8192 )
+    public void testVectorsMatchTheReference( String strText, String strVector )
+    {
+        String [ ] values = strVector.split( " " );
+        float [ ] reference = new float [ values.length];
+        for ( int i = 0; i < values.length; i++ )
+        {
+            reference [i] = Float.parseFloat( values [i] );
+        }
+        assertEquals( 1, Vectors.similarity( reference, _service.embedDocument( strText ) ), 1e-3 );
     }
 
     /**

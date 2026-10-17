@@ -53,6 +53,14 @@ if ( _embeddingService.isAvailable( ) )
 ## Runtime
 
 - ONNX Runtime extracts its native library to `java.io.tmpdir`, which must allow execution.
+- The DJL tokenizer copies its native library to `~/.djl.ai/tokenizers/`, once per version. `DJL_CACHE_DIR`, or
+  `ENGINE_CACHE_DIR` for the native libraries only, moves it (environment variable or system property). When the
+  home directory is not writable, DJL uses `java.io.tmpdir`.
+- The model lives outside the Java heap. Measured with Granite R2 on Linux x86_64: about 640 MiB more resident memory
+  while it loads, about 410 MiB once loaded and in use, and about 10 MiB of heap. Releasing the model does not give
+  this memory back to the system. The container memory limit must leave this room above `-Xmx`.
+- A JVM loads the tokenizer native library for one class loader only: after a redeployment without a server restart,
+  the model is not available until the server restarts.
 - The quantized Granite R2 model needs a CPU with AVX2.
 - At load, the `lutece.embedding` logger gives the model, the load time, the time of a first encoding, the AVX2
   support, the memory limit of the container, the heap and the temporary directory.

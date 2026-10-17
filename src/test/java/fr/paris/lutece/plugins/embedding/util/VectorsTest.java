@@ -75,6 +75,15 @@ public class VectorsTest
     }
 
     /**
+     * Checks that a vector is stored as little-endian float32, the layout of the vectors already stored.
+     */
+    @Test
+    public void testBytesAreLittleEndian( )
+    {
+        assertArrayEquals( new byte [ ] { 0, 0, (byte) 0x80, 0x3F, 0, 0, 0, (byte) 0xC0 }, Vectors.toBytes( new float [ ] { 1, -2 } ) );
+    }
+
+    /**
      * Checks that the nearest neighbours come most similar first, above the minimum score, within the count.
      */
     @Test
